@@ -1,0 +1,22 @@
+{
+    "events": [
+        {
+            "timestamp": "2026-06-13 18:07:27",
+            "event_type": "manual",
+            "label": "Ručno zvonjenje",
+            "user": "Administrator"
+        },
+        {
+            "timestamp": "2026-06-13 20:47:32",
+            "event_type": "manual",
+            "label": "Ručno zvonjenje",
+            "user": "Administrator"
+        },
+        {
+            "timestamp": "2026-06-13 21:03:02",
+            "event_type": "manual",
+            "label": "Ručno zvonjenje",
+            "user": "Administrator"
+        }
+    ]
+}

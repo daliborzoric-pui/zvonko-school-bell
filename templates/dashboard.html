@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zvonko</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="dashboard-page">
+
+    <header class="topbar">
+        <div class="container topbar-inner">
+
+            <div class="brand-box">
+                <img src="{{ url_for('static', filename='bell.svg') }}" alt="Zvonko logo" class="brand-logo">
+
+                <div>
+                    <h1 class="app-title">Zvonko</h1>
+                    <p class="app-subtitle">Pametno školsko zvono</p>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <div class="bell-status-box">
+                    <div id="bell-indicator"></div>
+                    <span>Status</span>
+                </div>
+
+                <button onclick="ringBell()" class="btn-danger">Pozvoni!</button>
+
+                <div class="user-box">
+                    {{ full_name }}
+                </div>
+
+                <a href="{{ url_for('logout') }}" class="logout-link">Odjava</a>
+            </div>
+
+        </div>
+    </header>
+
+    <main class="container dashboard-layout">
+
+        <section class="left-panel">
+
+            <div class="card">
+                <h2>Globalne postavke sustava</h2>
+
+                <form method="POST" class="form-block">
+                    <input type="hidden" name="form_type" value="system_settings">
+
+                    <label for="school_type">Tip škole</label>
+                    <select id="school_type" name="school_type">
+                        <option value="primary" {% if settings.school_type == "primary" %}selected{% endif %}>
+                            Osnovna škola
+                        </option>
+                        <option value="secondary" {% if settings.school_type == "secondary" %}selected{% endif %}>
+                            Srednja škola
+                        </option>
+                    </select>
+
+                    <label for="shift_mode">Način rada</label>
+                    <select id="shift_mode" name="shift_mode">
+                        <option value="single" {% if settings.shift_mode == "single" %}selected{% endif %}>
+                            Jedna smjena
+                        </option>
+                        <option value="double" {% if settings.shift_mode == "double" %}selected{% endif %}>
+                            Dvije smjene
+                        </option>
+                    </select>
+
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="system_enabled" {% if settings.system_enabled %}checked{% endif %}>
+                        Sustav zvonjenja uključen
+                    </label>
+
+                    <button type="submit" class="btn-primary">Sačuvaj postavke</button>
+                </form>
+
+                <div class="info-box">
+                    <p><strong>Broj sati dnevno:</strong> {{ lesson_count }}</p>
+
+                    <p>
+                        <strong>Status sustava:</strong>
+                        {% if settings.system_enabled %}
+                            Uključen
+                        {% else %}
+                            Isključen
+                        {% endif %}
+                    </p>
+
+                    <p>
+                        <strong>Smjene:</strong>
+                        {% if settings.shift_mode == "double" %}
+                            Dvije smjene
+                        {% else %}
+                            Jedna smjena
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Tjedni prikaz</h2>
+
+                <div class="week-navigation">
+                    <a href="{{ url_for('dashboard', week_date=previous_week_date) }}" class="nav-link">← Prethodni</a>
+                    <a href="{{ url_for('dashboard') }}" class="nav-link">Tekući tjedan</a>
+                    <a href="{{ url_for('dashboard', week_date=next_week_date) }}" class="nav-link">Sljedeći →</a>
+                </div>
+
+                <ul class="week-list">
+                    {% for day in week_days %}
+                        <li>
+                            <a
+                                href="{{ url_for('dashboard', week_date=current_week_date, selected_date=day.date_iso) }}"
+                                class="day-link{% if day.is_shortened %} shortened{% endif %}{% if day.is_selected %} selected{% endif %}"
+                            >
+                                <span>{{ day.name }} - {{ day.display }}</span>
+
+                                <span class="day-meta">
+                                    {% if day.is_shortened %}
+                                        🕒
+                                    {% endif %}
+                                </span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        </section>
+
+        <section class="right-panel">
+
+            <div class="card">
+                <h2>Raspored za datum: {{ selected_date }}</h2>
+
+                {% if selected_date_iso %}
+                    <form method="POST" class="form-block day-settings-form">
+                        <input type="hidden" name="form_type" value="day_settings">
+
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="shortened" {% if day_settings.shortened %}checked{% endif %}>
+                            Skraćeni raspored za ovaj dan
+                        </label>
+
+                        <button type="submit" class="btn-primary">Sačuvaj dnevne postavke</button>
+                    </form>
+
+                    <div class="info-box">
+                        <p>
+                            <strong>Trenutni način rada:</strong>
+                            {% if day_settings.shortened %}
+                                Skraćeni raspored (30 min)
+                            {% else %}
+                                Normalni raspored (45 min)
+                            {% endif %}
+                        </p>
+
+                        <p>
+                            <strong>Aktivne smjene:</strong>
+                            {% if settings.shift_mode == "double" %}
+                                prva i druga smjena
+                            {% else %}
+                                samo prva smjena
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="schedule-columns">
+                        <div>
+                            <h3>Sati</h3>
+                            <ul class="data-list">
+                                {% for lesson in lessons %}
+                                    <li>
+                                        <strong>
+                                            {% if lesson.shift == "first" %}
+                                                1. smjena
+                                            {% else %}
+                                                2. smjena
+                                            {% endif %}
+                                            - {{ lesson.label }}
+                                        </strong><br>
+
+                                        {{ lesson.start }} - {{ lesson.end }}
+
+                                        {% if day_settings.shortened %}
+                                            (30 min)
+                                        {% else %}
+                                            (45 min)
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3>Zvona</h3>
+                            <ul class="data-list">
+                                {% for event in bell_events %}
+                                    <li>
+                                        <strong>{{ event.time }}</strong><br>
+                                        {{ event.label }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                {% else %}
+                    <p>Odaberi dan u tjednom prikazu za pregled rasporeda.</p>
+                {% endif %}
+            </div>
+
+        </section>
+
+    </main>
+
+    <audio id="bell-sound" preload="auto">
+        <source src="{{ url_for('static', filename='bell.mp3') }}" type="audio/mpeg">
+    </audio>
+
+    <script>
+    let lastSoundToken = null;
+
+    function setLamp(active) {
+        const lamp = document.getElementById("bell-indicator");
+
+        if (active) {
+            lamp.classList.add("active");
+        } else {
+            lamp.classList.remove("active");
+        }
+    }
+
+    function playBellSound() {
+        const audio = document.getElementById("bell-sound");
+        audio.currentTime = 0;
+        audio.play().catch(error => {
+            console.log("Audio nije pokrenut:", error);
+        });
+    }
+
+    function ringBell() {
+        fetch("/ring_bell", {
+            method: "POST"
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "disabled") {
+                alert("Sustav zvonjenja je isključen.");
+            } else if (data.status === "unauthorized") {
+                alert("Korisnik nije prijavljen.");
+            } else if (data.status !== "ok") {
+                alert("Zvono nije aktivirano.");
+            }
+        })
+        .catch(error => {
+            console.error("Greška:", error);
+            alert("Dogodila se greška pri pozivu zvona.");
+        });
+    }
+
+    function checkBellStatus() {
+        fetch("/bell_status")
+        .then(response => response.json())
+        .then(data => {
+            setLamp(data.active);
+
+            if (lastSoundToken === null) {
+                lastSoundToken = data.sound_token;
+                return;
+            }
+
+            if (data.sound_token > lastSoundToken) {
+                lastSoundToken = data.sound_token;
+                playBellSound();
+            }
+        })
+        .catch(error => {
+            console.error("Greška kod provjere statusa zvona:", error);
+        });
+    }
+
+    setInterval(checkBellStatus, 1000);
+    checkBellStatus();
+    </script>
+
+</body>
+</html>
